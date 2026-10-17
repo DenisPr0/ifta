@@ -1,0 +1,33 @@
+name: Update state boundaries
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 4 1 */3 *'   # o dată pe trimestru (granițele statelor nu se schimbă des)
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-states
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Construiește granițele statelor
+        run: node scripts/build-states.mjs out
+      - name: Publică pe ramura data
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd out
+          git init -q -b data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "State boundaries $(date -u +%Y-%m-%d)"
+          git push -q -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" data
